@@ -1,0 +1,16 @@
+- hosts: main
+  gather_facts: false
+  remote_user: application
+  become: yes
+  become_user: root
+  become_method: sudo
+  vars:
+    environment: "{{ environment }}"  
+
+  tasks:
+
+   - name: call prometheus.yml
+     include_tasks: prometheus.yml
+
+   - name: call alertmanager.yml
+     include_tasks: alertmanager.yml
