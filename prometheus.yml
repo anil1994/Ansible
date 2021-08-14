@@ -1,0 +1,103 @@
+
+   - name: Stop service firewalld, if started
+     service:
+       name: firewalld
+       state: stopped
+       enabled: no
+
+   - name: disable selinux
+     selinux:
+       state: disabled
+
+   - name: Selinux disable permanently 
+     replace:
+       path: /etc/selinux/config
+       regexp: '(\s+)SELINUX=enabled'
+       replace: '\1SELINUX=disabled\2'
+       backup: yes
+  
+   - name: download prometheus.tar.gz
+     shell: wget https://github.com/prometheus/prometheus/releases/download/v2.28.1/prometheus-2.28.1.linux-amd64.tar.gz
+
+   - name: configure prometheus
+     shell: |
+       useradd --no-create-home --shell /bin/false prometheus
+       mkdir /etc/prometheus
+       mkdir -p /Application/prometheus
+       chown prometheus:prometheus /Application/ -R
+       chown prometheus:prometheus /etc/prometheus
+       tar -xvzf prometheus-2.28.1.linux-amd64.tar.gz
+       mv prometheus-2.28.1.linux-amd64 prometheuspackage
+       cp prometheuspackage/prometheus /usr/local/bin/
+       cp prometheuspackage/promtool /usr/local/bin/
+       chown prometheus:prometheus /usr/local/bin/prometheus
+       chown prometheus:prometheus /usr/local/bin/promtool
+       cp -r prometheuspackage/consoles /etc/prometheus
+       cp -r prometheuspackage/console_libraries /etc/prometheus
+       chown -R prometheus:prometheus /etc/prometheus/consoles
+       chown -R prometheus:prometheus /etc/prometheus/console_libraries
+       touch /etc/prometheus/prometheus.yml
+       touch /etc/systemd/system/prometheus.service
+
+   
+
+   - name: Copy files repository to remote server
+     copy:
+       src: /data/workspace/OP/Prometheus/ansible/prometheus/prometheus-prod-conf.yml
+       dest: /etc/prometheus/prometheus.yml
+     when: environment == "prod"
+
+   - name: Copy files repository to remote server
+     copy:
+       src: /data/workspace/OP/Infra/Prometheus/prometheus-alertmanager installation/ansible/prometheus/prometheus-test-conf.yml
+       dest: /etc/prometheus/prometheus.yml
+     when: environment == "test"
+
+   - name: Copy files repository to remote server
+     copy:
+       src: /data/workspace/OP/Prometheus/ansible/prometheus/prometheus-default-conf.yml
+       dest: /etc/prometheus/prometheus.yml
+     when: environment != "prod" and environment != "stg" and environment != "test" and environment != "dev"
+   
+   
+   - name: prometheus service create file
+     shell: |
+       chown prometheus:prometheus /etc/prometheus/prometheus.yml
+       
+
+   - name: insert  configuration block in /etc/systemd/system/prometheus.service
+     blockinfile:
+       path: /etc/systemd/system/prometheus.service
+       block: |
+        [Unit]
+        Description=Prometheus
+        Wants=network-online.target
+        After=network-online.target
+
+        [Service]
+        User=prometheus
+        Group=prometheus
+        Type=simple
+        ExecStart=/usr/local/bin/prometheus \
+        --config.file /etc/prometheus/prometheus.yml \
+        --storage.tsdb.path /Application/prometheus \
+        --web.console.templates=/etc/prometheus/consoles \
+        --web.console.libraries=/etc/prometheus/console_libraries
+
+        [Install]
+        WantedBy=multi-user.target
+
+   - name: Start prometheus service
+     service:
+       name: prometheus
+       state: restarted
+       enabled: yes
+       
+   - name: daemon reload conf degisikligini alması icin
+     shell: |
+       systemctl daemon-reload
+
+   - name: Ansible delete prometheus.tar.gz
+     file:
+       path: /home/wasadm/prometheus-2.28.1.linux-amd64.tar.gz
+       state: absent
