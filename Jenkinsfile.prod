@@ -1,0 +1,23 @@
+pipeline {
+    agent {
+      label 'jenkinsprod'
+    }
+
+    stages {
+        stage('Install prometheus and alertmanager') {
+            
+           steps {
+               sh '''
+                    #!/bin/bash
+                    cd ansible/prometheus
+                    ansible-playbook -i inventory.prod  main.yml -e 'environment=prod'  -vvv
+                '''
+            }    
+
+   }  
+
+}
+
+
+
+}
