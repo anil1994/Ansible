@@ -1,0 +1,23 @@
+pipeline {
+    agent {
+      label 'jenkinstest'
+    }
+
+    stages {
+        stage('Install prometheus and alertmanager') {
+            
+           steps {
+               sh '''
+                    #!/bin/bash
+                    cd ansible/prometheus
+                    ansible-playbook -i inventory.test  main.yml  -e 'environment=test' -vvv
+                '''
+            }    
+
+   }  
+
+}
+
+
+
+}
