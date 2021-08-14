@@ -1,0 +1,2 @@
+[main]
+172.x.x.x ansible_connection=ssh ansible_ssh_user=application  host_key_checking=False ansible_ssh_common_args='-o StrictHostKeyChecking=no'
